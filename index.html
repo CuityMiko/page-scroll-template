@@ -27,12 +27,41 @@ body {
   background-color: #c7c7c7;
 }
 
+
+.page-nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: fixed;
+  top: 330px;
+  right: 60px;
+}
+.page-nav a {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #414956;
+  margin: 0 0 22px 0;
+}
+.page-nav .active a {
+  background-color: #09f;
+}
 </style>
 
+<!-- 每一屏都需要标记page类 -->
 <div class="page page1">1</div>
 <div class="page page2">2</div>
 <div class="page page3">3</div>
 <div class="page page4">4</div>
+
+<!-- 右侧导航, 如果不需要, 用css隐藏掉, data-target表示目标页, 下标从0开始 -->
+<ul class="page-nav">
+  <li data-target="0" class="active"><a href="javascript:;"></a></li>
+  <li data-target="1"><a href="javascript:;"></a></li>
+  <li data-target="2"><a href="javascript:;"></a></li>
+  <li data-target="3"><a href="javascript:;"></a></li>
+</ul>
 
 <script src="//g.tbcdn.cn/mm/activity-assets/20150909.162311.437/jquery-1.11.3.min.js"></script>
 <script src="//g.tbcdn.cn/mm/activity-assets/20150813.183131.653/underscore.min.js"></script>
@@ -53,17 +82,18 @@ body {
     }
   };
   var page2 = {
-  show: function () {
-    console.log('page1 show');
-  },
-  hide: function () {
-    console.log('page1 hide');
-  }
+    show: function () {
+      console.log('page1 show');
+    },
+    hide: function () {
+      console.log('page1 hide');
+    }
   };
 
   var pageCtrl = {
-    pages: $('.page'),
     current: 0,
+    pages: $('.page'),
+    nav: $('.page-nav'),
     steps: [0, 800, 1600, 2400],  // 每一屏对应的滚动位置, 长度应该等于pages.length
     duration: 0.3,
 
@@ -72,11 +102,18 @@ body {
     hide: [page1.hide, page2.hide, $.noop, $.noop]
   };
 
-  pageCtrl.init = function () {
+  /**
+   * 初始化
+   * @param opt {Object} 参数
+   *  opt.pageSelector {string} 选择所有页面的选择器, 如.page
+   *  opt.showNav {boolean} 是否显示右侧导航
+   **/
+  pageCtrl.init = function (opt) {
     pageCtrl.addListeners();
     pageCtrl.adjustPageHeight();
     pageCtrl.go(0);
   };
+
 
   pageCtrl.addListeners = function () {
     var doc = $(document);
@@ -105,6 +142,13 @@ body {
       }
     }, 1200, {trailing: false}));
 
+    // 监听右侧导航
+    pageCtrl.nav.on('click', 'li', function (e) {
+      var item = $(this);
+      var targetPage = parseInt(item.data('target'), 10);
+      pageCtrl.go(targetPage, pageCtrl.current);
+    });
+
     // 窗口大小改变, 每一屏大小也改变
     $(window).on('resize', _.debounce(pageCtrl.adjustPageHeight, 400));
   };
@@ -117,6 +161,7 @@ body {
       steps.push(i * height);
     }
     pageCtrl.steps = steps;
+    window.scrollTo(0, steps[pageCtrl.current]);
   };
 
   pageCtrl.go = function (index, prev) {
@@ -130,6 +175,10 @@ body {
     }
 
     me.current = index;
+    me.nav.find('li')
+      .removeClass('active')
+      .filter(':nth-child(' + (index + 1) + ')')
+      .addClass('active');
     TweenLite.to(window, me.duration, {
       scrollTo: {y: me.steps[index]},
       onComplete: function () {
@@ -148,7 +197,9 @@ body {
   };
 
 
-  pageCtrl.init();
+  pageCtrl.init({
+    pageSelector: '.page'
+  });
 
 }());
 </script>
