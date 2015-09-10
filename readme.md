@@ -1,6 +1,8 @@
 
 ## 单页滚屏模板
 
+[demo][http://qiudeqing.com/page-scroll-template/]
+
 ### 滚屏支持
 
 - 鼠标滚轮
