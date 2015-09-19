@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="initial-scale=1.0, width=device-width, user-scalable=no">
   <title>Document</title>
+
   <link rel="stylesheet" href="./single-page-scroll.css">
 </head>
 <body>
@@ -27,49 +28,59 @@ body {
 .page4 {
   background-color: #c7c7c7;
 }
+
+
 </style>
 
 <!-- 每一屏都需要标记page类 -->
 <div class="page page1">1</div>
-<div class="page page2">2input  <input type="text"></div>
+<div class="page page2">2</div>
 <div class="page page3">3</div>
 <div class="page page4">4</div>
 
-<!-- 右侧导航, 如果不需要, 用css隐藏掉, data-target表示目标页, 下标从0开始 -->
 
+<script src="./require.js"></script>
 
-<script src="//g.tbcdn.cn/mm/activity-assets/20150909.162311.437/jquery-1.11.3.min.js"></script>
-<script src="//g.tbcdn.cn/mm/activity-assets/20150813.183131.653/underscore.min.js"></script>
-<script src="//g.tbcdn.cn/mm/activity-assets/20150918.142306.914/TweenMax.min.js"></script>
-<script src="//g.tbcdn.cn/mm/activity-assets/20150906.094858.101/ScrollToPlugin.min.js"></script>
-<script src="//g.tbcdn.cn/mm/activity-assets/20150901.123422.836/jquery.mousewheel.min.js"></script>
-<script src="//g.tbcdn.cn/mm/activity-assets/20150915.125621.552/hammer.min.js"></script>
-
-<script src="./single-page-scroll.js"></script>
 
 <script>
 (function () {
 
-  var pageCtrl = new SinglePageScroll({
-    pages: $('.page'),
-    enable: {
-      keydown: true,
-      listNav: true,
-      mousewheel: true
-    },
-    onShow: function (d) {
-      console.log('show:', d);
-    },
-    onHide: function (d) {
-      console.log('hide', d);
-    },
-    onBeforeShow: function (d) {
-      console.log('before show', d);
-      return true;
+  require.config({
+    paths: {
+      jquery: '//g.tbcdn.cn/mm/activity-assets/20150909.162311.437/jquery-1.11.3.min',
+      underscore: '//g.tbcdn.cn/mm/activity-assets/20150813.183131.653/underscore.min',
+      TweenMax: '//g.tbcdn.cn/mm/activity-assets/20150918.142306.914/TweenMax.min',
+      ScrollToPlugin: '//g.tbcdn.cn/mm/activity-assets/20150906.094858.101/ScrollToPlugin.min',
+      'jquery.mousewheel': '//g.tbcdn.cn/mm/activity-assets/20150901.123422.836/jquery.mousewheel.min',
+      Hammer: '//g.tbcdn.cn/mm/activity-assets/20150915.125621.552/hammer.min'
     }
   });
 
+  require(['./single-page-scroll'], function (SinglePageScroll) {
 
+
+
+    var pageCtrl = new SinglePageScroll({
+      pages: $('.page'),
+      enable: {
+        keydown: true,
+        listNav: true,
+        mousewheel: true
+      },
+      onShow: function (d) {
+        console.log('show:', d);
+      },
+      onHide: function (d) {
+        console.log('hide', d);
+      },
+      onBeforeShow: function (d) {
+        console.log('before show', d);
+        return true;
+      }
+    });
+
+
+  });
 
   // // 每一屏的控制逻辑
   // var page1 = {
