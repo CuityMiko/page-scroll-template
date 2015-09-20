@@ -1,10 +1,143 @@
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
-    define(['jquery', 'underscore', 'TweenMax', 'Hammer', 'ScrollToPlugin', 'jquery.mousewheel'], factory);
+    define(['jquery', 'TweenMax', 'Hammer', 'ScrollToPlugin'], factory);
   } else {
-    root.SinglePageScroll = factory(root.jQuery, _, TweenMax, Hammer);
+    root.SinglePageScroll = factory(root.jQuery, TweenMax, Hammer);
   }
-}(this, function ($, _, TweenMax, Hammer) {
+}(this, function ($, TweenMax, Hammer) {
+
+  var util = {
+    // 摘自_.debounce : http://underscorejs.org/#debounce
+    debounce: function(func, wait, immediate) {
+      var timeout, args, context, timestamp, result;
+
+      var later = function() {
+        var last = _.now() - timestamp;
+
+        if (last < wait && last >= 0) {
+          timeout = setTimeout(later, wait - last);
+        } else {
+          timeout = null;
+          if (!immediate) {
+            result = func.apply(context, args);
+            if (!timeout) context = args = null;
+          }
+        }
+      };
+
+      return function() {
+        context = this;
+        args = arguments;
+        timestamp = _.now();
+        var callNow = immediate && !timeout;
+        if (!timeout) timeout = setTimeout(later, wait);
+        if (callNow) {
+          result = func.apply(context, args);
+          context = args = null;
+        }
+
+        return result;
+      };
+    },
+
+    // 摘自_.throttle : http://underscorejs.org/#throttle
+    throttle: function(func, wait, options) {
+      var context, args, result;
+      var timeout = null;
+      var previous = 0;
+      if (!options) options = {};
+      var later = function() {
+        previous = options.leading === false ? 0 : _.now();
+        timeout = null;
+        result = func.apply(context, args);
+        if (!timeout) context = args = null;
+      };
+      return function() {
+        var now = _.now();
+        if (!previous && options.leading === false) previous = now;
+        var remaining = wait - (now - previous);
+        context = this;
+        args = arguments;
+        if (remaining <= 0 || remaining > wait) {
+          if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+          }
+          previous = now;
+          result = func.apply(context, args);
+          if (!timeout) context = args = null;
+        } else if (!timeout && options.trailing !== false) {
+          timeout = setTimeout(later, remaining);
+        }
+        return result;
+      };
+    }
+  };
+
+  // 兼容性良好的鼠标滚轮监听函数: https://developer.mozilla.org/en-US/docs/Web/Events/wheel
+  util.addWheelListener = (function(window,document) {
+
+    var prefix = "", _addEventListener, onwheel, support;
+
+    // detect event model
+    if ( window.addEventListener ) {
+        _addEventListener = "addEventListener";
+    } else {
+        _addEventListener = "attachEvent";
+        prefix = "on";
+    }
+
+    // detect available wheel event
+    support = "onwheel" in document.createElement("div") ? "wheel" : // Modern browsers support "wheel"
+              document.onmousewheel !== undefined ? "mousewheel" : // Webkit and IE support at least "mousewheel"
+              "DOMMouseScroll"; // let's assume that remaining browsers are older Firefox
+
+    var addWheelListener = function( elem, callback, useCapture ) {
+        _addWheelListener( elem, support, callback, useCapture );
+
+        // handle MozMousePixelScroll in older Firefox
+        if( support == "DOMMouseScroll" ) {
+            _addWheelListener( elem, "MozMousePixelScroll", callback, useCapture );
+        }
+    };
+
+    function _addWheelListener( elem, eventName, callback, useCapture ) {
+        elem[ _addEventListener ]( prefix + eventName, support == "wheel" ? callback : function( originalEvent ) {
+            !originalEvent && ( originalEvent = window.event );
+
+            // create a normalized event object
+            var event = {
+                // keep a ref to the original event object
+                originalEvent: originalEvent,
+                target: originalEvent.target || originalEvent.srcElement,
+                type: "wheel",
+                deltaMode: originalEvent.type == "MozMousePixelScroll" ? 0 : 1,
+                deltaX: 0,
+                deltaZ: 0,
+                preventDefault: function() {
+                    originalEvent.preventDefault ?
+                        originalEvent.preventDefault() :
+                        originalEvent.returnValue = false;
+                }
+            };
+
+            // calculate deltaY (and deltaX) according to the event
+            if ( support == "mousewheel" ) {
+                event.deltaY = - 1/40 * originalEvent.wheelDelta;
+                // Webkit also support wheelDeltaX
+                originalEvent.wheelDeltaX && ( event.deltaX = - 1/40 * originalEvent.wheelDeltaX );
+            } else {
+                event.deltaY = originalEvent.detail;
+            }
+
+            // it's time to fire the callback
+            return callback( event );
+
+        }, useCapture || false );
+    }
+    return addWheelListener;
+  })(window,document);
+
 
   /**
    *  整页滚屏模板
@@ -59,10 +192,9 @@
     }
     if (me.enable.listNav) {
       var navTokens = [];
-      var tplFn = _.template('<li data-target="<%= targetIndex %>"></li>');
       navTokens.push('<ul class="single-page-nav">');
       _.each(me.pages, function (d, i) {
-        navTokens.push(tplFn({targetIndex: i}));
+        navTokens.push('<li data-target="' + i + '"></li>');
       });
       navTokens.push('</ul>');
       me.body.append(navTokens.join(''));
@@ -75,8 +207,10 @@
       me.doc.on('keydown', _.bind(me.onKeydown, me));
     }
     if (me.enable.mousewheel) {
-      me.doc.on('mousewheel', false);
-      me.doc.on('mousewheel', _.throttle(_.bind(me.onMousewheel, me), 1200, {trailing: false}));
+      util.addWheelListener(document, function (e) {e.preventDefault();});
+      util.addWheelListener(document, util.throttle(_.bind(me.onMousewheel, me), 1200, {trailing: false}));
+      // me.doc.on('mousewheel', false);
+      // me.doc.on('mousewheel', );
     }
     if (me.enable.listNav) {
       me.listNav.on('click', 'li', _.bind(me.onNavListClick, me));
@@ -89,7 +223,7 @@
       //   });
       // swipe.on('tap', _.bind(me.onSwipe, me));
     }
-    me.win.on('resize', _.debounce(_.bind(me.adjustPageSize, me), 400));
+    me.win.on('resize', util.debounce(_.bind(me.adjustPageSize, me), 400));
   };
 
   SinglePageScroll.prototype.onSwipe = function (e) {
@@ -193,11 +327,12 @@
   };
   SinglePageScroll.prototype.onMousewheel = function (e) {
     var me = this;
-    if (e.deltaY > 0) {
+    console.log(e)
+    if (e.deltaY < 0) {
       me.up({
         actionType: SinglePageScroll.actionType.mousewheel
       });
-    } else if (e.deltaY < 0) {
+    } else if (e.deltaY > 0) {
       me.down({
         actionType: SinglePageScroll.actionType.mousewheel
       });
